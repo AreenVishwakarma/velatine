@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Practice 1 — Responsive</title>
+  <style>
+    :root{
+      --bg: #ffc0cb; /* pink */
+      --card: #fff;
+      --accent: #e74c3c; /* red-ish */
+      --btn-size: clamp(44px, 4.5vw, 60px);
+      --gap: clamp(12px, 4vw, 40px);
+      --card-max-width: 1000px;
+    }
+
+    /* Page */
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 32px 16px;
+      box-sizing: border-box;
+    }
+
+    /* Card */
+    .box{
+      width: min(95%, var(--card-max-width));
+      background: var(--card);
+      padding: clamp(16px, 3.5vw, 36px);
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      text-align:center;
+      color:#222;
+    }
+
+    h1{
+      margin: 0 0 8px 0;
+      font-size: clamp(24px, 6vw, 46px);
+      line-height:1;
+    }
+
+    p.lead{
+      margin: 0 0 clamp(14px, 3vw, 28px) 0;
+      font-size: clamp(18px, 3.8vw, 36px);
+      color:#333;
+    }
+
+    /* Buttons area */
+    .buttons{
+      position: relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: var(--gap);
+      padding: clamp(10px, 3vw, 24px);
+      min-height: 90px;
+      /* keep a bit taller so the moving button has room on small screens */
+    }
+
+    /* Generic button styles */
+    .btn{
+      appearance:none;
+      -webkit-appearance:none;
+      border: 2px solid #000;
+      background: var(--accent);
+      color: white;
+      font-weight:700;
+      cursor:pointer;
+      border-radius:8px;
+      padding: 0 20px;
+      height: var(--btn-size);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size: clamp(16px, 2.8vw, 28px);
+      transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px) scale(.997); }
+
+    /* YES button: normal flow */
+    .yes-button{
+      position: relative; /* stays in flow */
+      z-index: 2;
+      min-width: 120px;
+    }
+
+    /* NO button: will move within .buttons */
+    .NO-button{
+      position: static; /* <-- start in normal flow */
+      z-index: 2;
+      min-width: 120px;
+      white-space:nowrap;
+      transition: left 50ms ease, top 50ms ease, transform 50ms ease;
+    }
+
+    /* hover style for NO-button when user actually manages to hover it */
+    .NO-button:hover{
+      background: #666;
+      color: #fff;
+    }
+
+    /* Responsive tweaks */
+    @media (min-width: 900px){
+      .buttons{ min-height: 120px; }
+      .box{ padding: 36px; }
+    }
+
+    @media (max-width:420px){
+      .buttons{ gap: 12px; min-height: 120px; }
+      .NO-button, .yes-button { min-width: 110px; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="box" role="main" aria-labelledby="title">
+    <h1 id="title">Kevin</h1>
+    <p class="lead">Will you be my Valentine?</p>
+
+    <div class="buttons" id="buttons">
+      <button class="btn yes-button" id="yes">YES</button>
+      <button class="btn NO-button" id="no" aria-label="No button that moves">NO</button>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const noBtn = document.getElementById('no');
+      const btnWrap = document.getElementById('buttons');
+
+      let moveInterval = null;
+      const JUMP_INTERVAL = 220;
+
+      function getRandomPosition() {
+        const wrapRect = btnWrap.getBoundingClientRect();
+        const btnRect = noBtn.getBoundingClientRect();
+        const maxLeft = Math.max(0, wrapRect.width - btnRect.width);
+        const maxTop  = Math.max(0, wrapRect.height - btnRect.height);
+        const left = Math.random() * maxLeft;
+        const top  = Math.random() * maxTop;
+        return { left, top };
+      }
+
+      function moveToRandom() {
+        noBtn.style.position = 'absolute'; // Switch to absolute when moving
+        const { left, top } = getRandomPosition();
+        noBtn.style.left = left + 'px';
+        noBtn.style.top  = top + 'px';
+        noBtn.style.transform = 'translate(0, 0)';
+      }
+
+      function moveAwayFromPointer(evt) {
+        noBtn.style.position = 'absolute'; // Switch to absolute when moving
+        const wrapRect = btnWrap.getBoundingClientRect();
+        const btnRect = noBtn.getBoundingClientRect();
+        const pointerX = evt.clientX - wrapRect.left;
+        const pointerY = evt.clientY - wrapRect.top;
+        const candidates = [
+          {left: 0, top: 0},
+          {left: Math.max(0, wrapRect.width - btnRect.width), top: 0},
+          {left: 0, top: Math.max(0, wrapRect.height - btnRect.height)},
+          {left: Math.max(0, wrapRect.width - btnRect.width), top: Math.max(0, wrapRect.height - btnRect.height)},
+          getRandomPosition()
+        ];
+        let best = candidates[0];
+        let bestDist = -1;
+        for (const c of candidates){
+          const cx = c.left + btnRect.width/2;
+          const cy = c.top + btnRect.height/2;
+          const dx = cx - pointerX;
+          const dy = cy - pointerY;
+          const dist = dx*dx + dy*dy;
+          if (dist > bestDist){ bestDist = dist; best = c; }
+        }
+        noBtn.style.left = Math.min(Math.max(0, best.left), Math.max(0, wrapRect.width - btnRect.width)) + 'px';
+        noBtn.style.top  = Math.min(Math.max(0, best.top),  Math.max(0, wrapRect.height - btnRect.height)) + 'px';
+        noBtn.style.transform = 'translate(0, 0)';
+      }
+
+      function startMoving() {
+        if (moveInterval) return;
+        moveInterval = setInterval(moveToRandom, JUMP_INTERVAL);
+      }
+      function stopMoving() {
+        if (moveInterval){
+          clearInterval(moveInterval);
+          moveInterval = null;
+        }
+      }
+
+      noBtn.addEventListener('mouseenter', (e) => {
+        noBtn.style.position = 'absolute'; // Switch to absolute when moving
+        const wrapRect = btnWrap.getBoundingClientRect();
+        const btnRect = noBtn.getBoundingClientRect();
+        const computed = getComputedStyle(noBtn);
+        if (computed.transform && computed.transform !== 'none') {
+          const left = Math.max(0, (wrapRect.width - btnRect.width) / 2);
+          const top  = Math.max(0, (wrapRect.height - btnRect.height) / 2);
+          noBtn.style.left = left + 'px';
+          noBtn.style.top  = top  + 'px';
+          noBtn.style.transform = 'translate(0, 0)';
+        }
+        startMoving();
+      });
+
+      noBtn.addEventListener('mouseleave', () => {
+        stopMoving();
+      });
+
+      btnWrap.addEventListener('mousemove', (e) => {
+        const btnRect = noBtn.getBoundingClientRect();
+        const wrapRect = btnWrap.getBoundingClientRect();
+        const pointerX = e.clientX;
+        const pointerY = e.clientY;
+        const dx = pointerX - (btnRect.left + btnRect.width/2);
+        const dy = pointerY - (btnRect.top + btnRect.height/2);
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < Math.max(80, btnRect.width)) {
+          moveAwayFromPointer(e);
+        }
+      });
+
+      noBtn.addEventListener('focus', () => {
+        noBtn.style.position = 'absolute'; // Switch to absolute when moving
+        startMoving();
+      });
+      noBtn.addEventListener('blur', () => stopMoving());
+
+      document.getElementById('yes').addEventListener('click', () => {
+        alert('Yay! 💖');
+      });
+      noBtn.addEventListener('click', () => {
+        alert('You caught me! 😅');
+      });
+
+      window.addEventListener('resize', () => {
+        const wrapRect = btnWrap.getBoundingClientRect();
+        const btnRect = noBtn.getBoundingClientRect();
+        const left = parseFloat(noBtn.style.left || (wrapRect.width - btnRect.width)/2);
+        const top  = parseFloat(noBtn.style.top  || (wrapRect.height - btnRect.height)/2);
+        const maxLeft = Math.max(0, wrapRect.width - btnRect.width);
+        const maxTop  = Math.max(0, wrapRect.height - btnRect.height);
+        noBtn.style.left = Math.min(left, maxLeft) + 'px';
+        noBtn.style.top  = Math.min(top,  maxTop)  + 'px';
+      });
+
+      // Initial position: keep in flow
+      window.addEventListener('DOMContentLoaded', () => {
+        noBtn.style.position = 'static';
+        noBtn.style.left = '';
+        noBtn.style.top = '';
+        noBtn.style.transform = '';
+      });
+    })();
+  </script>
+</body>
+</html>
